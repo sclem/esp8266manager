@@ -19,6 +19,7 @@ What is the ESP8266?
 
 An example module config:
 
+````
 [{
     "name": "garage door",
     "target": "192.168.1.150",
@@ -34,6 +35,7 @@ An example module config:
         "off": 2
     }
 }]
+````
 
 The only restriction is unique names for module names.
 
@@ -41,8 +43,11 @@ API:
 
 From any REST client:
 
-GET / - returns the list of modules
+### GET / 
+    - returns the list of modules
 
-GET /[moduleName] - returns a module and all of its commands, including active state (whether the server can currently communicate with it)
+### GET /[moduleName] 
+    - returns a module and all of its commands, including active state (whether the server can currently communicate with it)
 
-GET /[moduleName]/commandName - performs a command by name
+### GET /[moduleName]/commandName 
+    - performs a command by name
