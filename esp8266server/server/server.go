@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/sclem/garagedoor/esp8266server"
+	"github.com/sclem/esp8266manager/esp8266server"
 )
 
 func main() {
