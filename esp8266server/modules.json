@@ -2,7 +2,31 @@
     "name": "main",
     "target": "localhost",
     "commands": {
-        "open": 4,
-        "close": 16
+        "open": {
+            "value": 4
+        },
+        "close": {
+            "commands": [{
+                "commands": [{
+                    "value": 5
+                }, {
+                    "value": 6
+                }]
+            }, {
+                "value": 2,
+                "delay": 20
+            }, {
+                "commands": [{
+                    "value": 10,
+                    "delay": 1000
+                }, {
+                    "value": 100,
+                    "delay": 10
+                }]
+            }, {
+                "value": 0,
+                "delay": 500
+            }]
+        }
     }
 }]

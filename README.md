@@ -24,18 +24,43 @@ An example module config:
     "name": "garage door",
     "target": "192.168.1.150",
     "commands": {
-        "open": 10,
-        "close": 20
-    }
-}, {
-    "name": "kitchen lights",
-    "target": "192.168.1.120",
-    "commands": {
-        "on": 1,
-        "off": 2
+        "open": {
+            value: 10
+        },
+        "close": {
+            value: 20
+        }
     }
 }]
 ````
+
+Commands can be nested with subroutines and delays (measured in milliseconds):
+(Subroutines will evaluate top to bottom)
+
+````
+[{
+    "name": "kitchen lights",
+    "target": "192.168.1.120",
+    "commands": {
+        "on": {
+            "commands": [{
+                value: 1
+            }, {
+                value: 2,
+                delay: 500
+            }, {
+                "commands": [{
+                    value: 3
+                }]
+            }]
+        },
+        "off": {
+            value: 0
+        }
+    }
+}]
+````
+
 
 The only restriction is unique names for module names.
 
@@ -43,11 +68,11 @@ API:
 
 From any REST client:
 
-### GET / 
+### GET /
     - returns the list of modules
 
-### GET /[moduleName] 
+### GET /[moduleName]
     - returns a module and all of its commands, including active state (whether the server can currently communicate with it)
 
-### GET /[moduleName]/commandName 
+### GET /[moduleName]/[commandName]
     - performs a command by name

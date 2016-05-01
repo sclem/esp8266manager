@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
@@ -40,6 +41,7 @@ func RunServer() {
 	}
 
 	for _, m := range modules {
+		m.RWMutex = &sync.RWMutex{}
 		m.connect()
 		if err != nil {
 			m.Active = false

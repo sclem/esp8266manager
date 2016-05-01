@@ -1,13 +1,13 @@
 package esp8266server
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,10 +16,19 @@ import (
 // Module defines a ESP8266 Module
 type Module struct {
 	conn     net.Conn
-	Name     string            `json:"name"`
-	Target   string            `json:"target"`
-	Commands map[string]uint32 `json:"commands"`
-	Active   bool              `json:"active"`
+	Name     string             `json:"name"`
+	Target   string             `json:"target"`
+	Commands map[string]Command `json:"commands"`
+	Active   bool               `json:"active"`
+	*sync.RWMutex
+}
+
+// Command is a command that either sends a value with an optional delay
+// Or defines a list of sub commands
+type Command struct {
+	Value       uint8     `json:"value"`
+	Delay       uint64    `json:"delay"`
+	SubCommands []Command `json:"commands"`
 }
 
 // Connects to a module
@@ -59,14 +68,13 @@ func checkHeartbeat(m *Module) {
 }
 
 //SendMessage Sends a message to the module on an open connection
-func (m *Module) SendMessage(msg uint32) error {
+func (m *Module) SendMessage(msg uint8) error {
 	if m.conn == nil {
 		return errors.New("Connection is unavailable")
 	}
-	buf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buf, msg)
 	m.conn.SetWriteDeadline(time.Now().Add(time.Second * 5))
-	_, err := m.conn.Write(buf)
+	log.Printf("Sending '%d' to '%s'", msg, m.conn.RemoteAddr())
+	_, err := m.conn.Write([]byte{msg})
 	return err
 }
 
@@ -82,6 +90,20 @@ func getModule(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, m)
+}
+
+// Performs a command and its subroutines
+func (m *Module) doCommand(c Command) error {
+	if c.SubCommands == nil || len(c.SubCommands) == 0 {
+		time.Sleep(time.Duration(c.Delay) * time.Millisecond)
+		if err := m.SendMessage(c.Value); err != nil {
+			return err
+		}
+	}
+	for _, sub := range c.SubCommands {
+		m.doCommand(sub)
+	}
+	return nil
 }
 
 //Rest handler for performing a command by name
@@ -104,15 +126,14 @@ func performCommand(c *gin.Context) {
 		return
 	}
 
-	if err := m.SendMessage(cmd); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Unable to send command",
-		})
-		return
-	}
+	go func() {
+		m.Lock()
+		m.doCommand(cmd)
+		m.Unlock()
+	}()
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Successfully sent command",
+		"message": "Sent command",
 	})
 	return
 }

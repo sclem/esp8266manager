@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"io"
@@ -39,14 +38,14 @@ func main() {
 func handleConnection(c net.Conn) {
 	defer c.Close()
 	for {
-		buf := make([]byte, 4)
+		buf := make([]byte, 1)
 		n, err := c.Read(buf)
 		if err != nil && err != io.EOF {
 			log.Printf("Unable to read bytes, %v", err)
 		}
 		if n > 0 {
 			log.Printf("Read %d bytes, %v", n, buf)
-			log.Printf("Message is %d", binary.LittleEndian.Uint32(buf))
+			log.Printf("Message is %d", buf[0])
 		}
 	}
 }
