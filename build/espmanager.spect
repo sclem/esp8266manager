@@ -1,0 +1,117 @@
+#ESP 8266 Manager Build Script
+%define        __spec_install_post %{nil}
+%define          debug_package %{nil}
+%define        __os_install_post %{_dbpath}/brp-compress
+
+Summary: ESP8266 Manager
+Name: espmanager
+Version: 1.0
+Release: {{RELEASE}}
+License: MIT
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+
+%description
+%{summary}
+
+%prep
+
+%build
+echo "building..."
+rm -rf %{buildroot}
+rm -rf %{_builddir}/%{name}
+mkdir -p %{_builddir}/%{name}/bin
+mkdir -p %{_builddir}/%{name}/setup
+mkdir -p %{_builddir}/%{name}/etc/logrotate.d
+mkdir -p %{_builddir}/%{name}/etc/systemd/system
+mkdir -p %{_builddir}/%{name}/public
+
+SRCPATH="$GOPATH/src/github.com/sclem/esp8266manager"
+
+# server
+MODULES="
+    github.com/sclem/esp8266manager/esp8266server/server
+"
+
+for module in $MODULES; do
+    cd "$GOPATH/src/$module"
+    binname=$(basename $module)
+    echo "Building $binname"
+    go build -o %{_builddir}/%{name}/bin/$binname \
+        -ldflags "-X main.Version=%{version}-%{release}" \
+        $module
+done
+
+#rename
+mv %{_builddir}/%{name}/bin/server %{_builddir}/%{name}/bin/espmanager
+
+# web
+cp -r $SRCPATH/esp8266web %{_builddir}/%{name}/public
+cd %{_builddir}/%{name}/public/esp8266web
+
+cordova build --release browser
+
+# Config
+cp -r $SRCPATH/setup/* %{_builddir}/%{name}/setup
+
+#Init Scripts
+cp -r $SRCPATH/build/etc/systemd/system/espmanager.service %{_builddir}/%{name}/etc/systemd/system
+cp -r $SRCPATH/build/etc/logrotate.d/* %{_builddir}/%{name}/etc/logrotate.d/
+
+echo "build done..."
+
+%install
+echo "installing..."
+mkdir -p %{buildroot}/etc/logrotate.d/
+mkdir -p %{buildroot}/etc/systemd/
+mkdir -p %{buildroot}/opt/espmanager/bin
+mkdir -p %{buildroot}/opt/espmanager/setup
+mkdir -p %{buildroot}/opt/espmanager/public
+mkdir -p %{buildroot}/var/log/espmanager
+
+echo "copying..."
+cp -r %{_builddir}/%{name}/bin/* %{buildroot}/opt/espmanager/bin/
+cp -r %{_builddir}/%{name}/setup/* %{buildroot}/opt/espmanager/setup/
+cp -r %{_builddir}/%{name}/etc/logrotate.d/* %{buildroot}/etc/logrotate.d/
+cp -r %{_builddir}/%{name}/etc/systemd/*  %{buildroot}/etc/systemd/
+
+cp -r %{_builddir}/%{name}/public/esp8266web/platforms/browser/www/* %{buildroot}/opt/espmanager/public
+
+echo "touching..."
+touch %{buildroot}/var/log/espmanager/espmanager.log
+
+echo "done installing..."
+
+%pre
+id espmanager &> /dev/null || /usr/sbin/useradd -r -g users espmanager
+
+%post
+
+# Re-add init scripts to reset the boot order
+#/sbin/chkconfig --del espmanager &> /dev/null || true
+#/sbin/chkconfig --add espmanager
+#/sbin/service espmanager restart
+
+%preun
+echo "  Begin PREUN Phase"
+#First arguments is zero if we are uninstalling
+if [ $1 -eq 0 ] ; then
+    /sbin/service espmanager stop
+fi
+
+echo "  Done PREUN Phase"
+
+%files
+%defattr(644, espmanager, users, 755)
+%attr(755, root, root) /etc/systemd/system/espmanager.service
+%config %attr(-, root, root) /etc/logrotate.d/espmanagerlog.conf
+
+%dir /opt/espmanager
+%config(noreplace) /opt/espmanager/setup/*
+%ghost %attr(-, root, root) /var/log/espmanager/espmanager.log
+%attr(755,-,-) /opt/espmanager/bin
+/opt/espmanager/public
+
+%clean
+rm -rf %{buildroot}
+rm -rf %{_builddir}/%{name}
+echo "cleaning..."

@@ -22,8 +22,10 @@ const (
 )
 
 var (
-	port  string
-	debug *bool
+	port       string
+	modulePath string
+	webroot    string
+	debug      *bool
 	// ModuleMap is the map of connections to ESP8266 modules
 	ModuleMap = make(map[string]*Module, 0)
 )
@@ -31,6 +33,8 @@ var (
 func init() {
 	debug = flag.Bool("debug", false, "Debug logging flag")
 	flag.StringVar(&port, "port", "1955", "Port to run server on")
+	flag.StringVar(&modulePath, "modulePath", "../setup/modules.json", "Path to module directory")
+	flag.StringVar(&webroot, "webroot", "../esp8266web/www", "Path to web root")
 }
 
 // RunServer reads the configs, inits connections, and runs the server
@@ -87,7 +91,7 @@ func shutdown() {
 
 //Read config file and open connections at addrs
 func readConfigs() ([]*Module, error) {
-	data, err := ioutil.ReadFile("modules.json")
+	data, err := ioutil.ReadFile(modulePath)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +110,7 @@ func getServer() *gin.Engine {
 	}
 	r := gin.Default()
 	r.Use(CORSMiddleware())
-	r.Use(static.Serve("/", static.LocalFile("../esp8266web/www", true)))
+	r.Use(static.Serve("/", static.LocalFile(webroot, true)))
 
 	m := r.Group("/modules")
 	{

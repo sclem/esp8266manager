@@ -76,3 +76,8 @@ From any REST client:
 
 ### GET /[moduleName]/[commandName]
     - performs a command by name
+
+
+### LICENSE
+
+MIT

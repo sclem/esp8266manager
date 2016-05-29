@@ -1,17 +1,26 @@
 [{
-    "name": "main",
+    "name": "MAIN",
     "target": "localhost",
     "commands": {
-        "open": {
-            "value": 4
-        },
-        "close": {
+        "BLINK": {
             "commands": [{
-                "commands": [{
-                    "value": 5
-                }, {
-                    "value": 6
-                }]
+                "value": 1
+            }, {
+                "value": 0,
+                "delay": 1000
+            }]
+        },
+        "OFF": {
+            "value": 0
+        },
+        "ALL": {
+            "value": 255
+        },
+        "ADVANCED": {
+            "commands": [{
+                "value": 5
+            }, {
+                "value": 6
             }, {
                 "value": 2,
                 "delay": 20
