@@ -41,17 +41,18 @@ func RunServer() {
 	}
 
 	for _, m := range modules {
-		m.RWMutex = &sync.RWMutex{}
-		m.connect()
-		if err != nil {
-			m.Active = false
-			log.Printf("Could not open connection to module '%s' at '%s', skipping.", m.Name, m.Target)
-		} else {
-			m.Active = true
-			log.Printf("Loading module '%s' at '%s'", m.Name, m.Target)
-		}
-		ModuleMap[m.Name] = m
-		go checkHeartbeat(m)
+		go func(m *Module) {
+			m.RWMutex = &sync.RWMutex{}
+			if err := m.connect(); err != nil {
+				m.Active = false
+				log.Printf("Could not open connection to module '%s' at '%s', skipping.", m.Name, m.Target)
+			} else {
+				m.Active = true
+				log.Printf("Loading module '%s' at '%s'", m.Name, m.Target)
+			}
+			ModuleMap[m.Name] = m
+			go checkHeartbeat(m)
+		}(m)
 	}
 
 	ch := make(chan os.Signal)
@@ -65,6 +66,7 @@ func RunServer() {
 	}(ch)
 
 	r := getServer()
+	log.Printf("Starting esp8266 server on port %s", port)
 	r.Run(port)
 }
 
@@ -94,7 +96,7 @@ func readConfigs() ([]*Module, error) {
 }
 
 func getServer() *gin.Engine {
-	//	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.Use(CORSMiddleware())
 
@@ -105,7 +107,7 @@ func getServer() *gin.Engine {
 	return r
 }
 
-//Get the list of garages available
+//Get the list of modules available
 func getModuleList(c *gin.Context) {
 	modules := make([]string, 0)
 	for key := range ModuleMap {

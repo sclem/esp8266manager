@@ -42,6 +42,7 @@ func (m *Module) isClosed() bool {
 		return true
 	}
 	buf := []byte{0x00}
+	m.conn.SetReadDeadline(time.Now().Add(time.Second * 5))
 	_, err := m.conn.Read(buf)
 	return err == io.EOF
 }
@@ -74,7 +75,7 @@ func (m *Module) SendMessage(msg uint8) error {
 	}
 	m.conn.SetWriteDeadline(time.Now().Add(time.Second * 5))
 	log.Printf("Sending '%d' to '%s'", msg, m.conn.RemoteAddr())
-	_, err := m.conn.Write([]byte{msg})
+	_, err := m.conn.Write([]byte(fmt.Sprintf("%d", msg)))
 	return err
 }
 
@@ -96,12 +97,12 @@ func getModule(c *gin.Context) {
 func (m *Module) doCommand(c Command) error {
 	if c.SubCommands == nil || len(c.SubCommands) == 0 {
 		time.Sleep(time.Duration(c.Delay) * time.Millisecond)
-		if err := m.SendMessage(c.Value); err != nil {
-			return err
-		}
+		return m.SendMessage(c.Value)
 	}
 	for _, sub := range c.SubCommands {
-		m.doCommand(sub)
+		if err := m.doCommand(sub); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -128,7 +129,9 @@ func performCommand(c *gin.Context) {
 
 	go func() {
 		m.Lock()
-		m.doCommand(cmd)
+		if err := m.doCommand(cmd); err != nil {
+			log.Printf("Error sending command: %+v", err)
+		}
 		m.Unlock()
 	}()
 
