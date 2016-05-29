@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,16 +22,15 @@ const (
 )
 
 var (
-	port string
+	port  string
+	debug *bool
 	// ModuleMap is the map of connections to ESP8266 modules
 	ModuleMap = make(map[string]*Module, 0)
 )
 
 func init() {
+	debug = flag.Bool("debug", false, "Debug logging flag")
 	flag.StringVar(&port, "port", "1955", "Port to run server on")
-	if !strings.Contains(port, ":") {
-		port = fmt.Sprintf(":%s", port)
-	}
 }
 
 // RunServer reads the configs, inits connections, and runs the server
@@ -48,7 +48,7 @@ func RunServer() {
 				log.Printf("Could not open connection to module '%s' at '%s', skipping.", m.Name, m.Target)
 			} else {
 				m.Active = true
-				log.Printf("Loading module '%s' at '%s'", m.Name, m.Target)
+				log.Printf("Found module '%s' at '%s'", m.Name, m.Target)
 			}
 			ModuleMap[m.Name] = m
 			go checkHeartbeat(m)
@@ -66,6 +66,11 @@ func RunServer() {
 	}(ch)
 
 	r := getServer()
+
+	if !strings.Contains(port, ":") {
+		port = fmt.Sprintf(":%s", port)
+	}
+
 	log.Printf("Starting esp8266 server on port %s", port)
 	r.Run(port)
 }
@@ -96,13 +101,19 @@ func readConfigs() ([]*Module, error) {
 }
 
 func getServer() *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
+	if !*debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := gin.Default()
 	r.Use(CORSMiddleware())
+	r.Use(static.Serve("/", static.LocalFile("../esp8266web/www", true)))
 
-	r.GET("", getModuleList)
-	r.GET("/:name", getModule)
-	r.GET("/:name/:command", performCommand)
+	m := r.Group("/modules")
+	{
+		m.GET("", getModuleList)
+		m.GET("/:name", getModule)
+		m.GET("/:name/:command", performCommand)
+	}
 
 	return r
 }

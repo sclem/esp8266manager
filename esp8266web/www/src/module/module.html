@@ -1,0 +1,11 @@
+<ion-view title="{{moduleId}}" hide-back-button="false">
+    <ion-content class="padding">
+        <ion-list>
+            <ion-item ng-repeat="c in commands" ng-click="onClick(c)">
+                <div>
+                    <h2>{{c.id}}</h2>
+                </div>
+            </ion-item>
+        </ion-list>
+    </ion-content>
+</ion-view>
